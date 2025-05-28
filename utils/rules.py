@@ -1,7 +1,7 @@
 # region imports
 from AlgorithmImports import *
 # endregion
-
+import pandas as pd
 # Your New Python File
 
 class Rule(Protocol):
@@ -59,20 +59,23 @@ class KeyLevelFinder(Rule):
 
     # ---------------------------------------------------------------------
     def detect_key_levels(self, df: pd.DataFrame) -> Dict[str, List[Tuple[pd.Timestamp, float]]]:
+     
+        print(self.lookback + self.levels_lag)
         if len(df) < self.lookback + self.levels_lag:
             return {"resistance": [], "support": []}
-
+        print("hfdiodfsadshijadfsadfsadfsidfhisu")
         # finestra “storica” su cui cercare i pivot
-        window = df.iloc[-self.lookback - self.levels_lag : -self.levels_lag].copy()
+        window = df.iloc[-self.lookback - self.levels_lag :-self.levels_lag].copy()
         touches = self._pivot_candidates(window)
+        
 
         validated: Dict[str, List[Tuple[pd.Timestamp, float]]] = {"resistance": [], "support": []}
         tol_mask = (1 + self.tolerance_pct)
-
+       
         for price, idxs in touches.items():
             if len(idxs) < self.min_touches:
                 continue
-
+            print("9")
             first_idx = idxs[0]
             tol = price * self.tolerance_pct
 
@@ -103,45 +106,74 @@ class KeyLevelFinder(Rule):
                 merged.append((l,p))
         return merged
 
-
 class KeyLevelBounceIndicator(KeyLevelFinder):
-    def __init__(self, *args, bounce_lookback: int = 5, **kwargs):
+
+    def __init__(
+        self,
+        *args,
+        bounce_lookback: int = 5,
+        breakout: bool = False,
+        breakout_tol_pct: float = 0.0004,   # extra % oltre tolerance per lo spike
+        **kwargs
+    ):
         super().__init__(*args, **kwargs)
-        self.bounce_lookback = bounce_lookback
+        self.bounce_lookback  = bounce_lookback
+        self.breakout         = breakout
+        self.breakout_tol_pct = breakout_tol_pct   # usato solo se breakout=True
 
     def check(self, data: pd.DataFrame) -> Tuple[bool, Optional[Tuple[Any, float]]]:
-        """
-        True se negli ultimi `bounce_lookback` bar c'è stata una candela che:
-            • ha toccato il livello (entro self.C)
-            • ha CHIUSO dalla parte corretta (close ≤ res  oppure close ≥ sup)
-        Restituisce (True, (timestamp_livello, prezzo_livello)) o (False, None)
-        """
         if len(data) <= self.levels_lag + self.bounce_lookback:
-            return False, None
+            return False
+        
+        past = data.iloc[-self.lookback - self.levels_lag :]
 
-        # 1) calcola i livelli su una finestra “passata” per evitare look‑ahead
-        past_window = data.iloc[-self.lookback - self.levels_lag : -self.levels_lag]
-        key_levels  = self.detect_key_levels(past_window)
-
-        # 2) finestre recenti dove cercare il rimbalzo
+        levels = self.detect_key_levels(past)
         recent = data.iloc[-self.bounce_lookback:]
+        if recent.empty:
+            return False
 
-        if self.kind == "resistance":               
-            for idx_lvl, lvl_price in key_levels["resistance"]:
-                for bar in recent.itertuples():
-                    touch = bar.high >= lvl_price - self.C  
-                    close_ok = bar.close <= lvl_price       
-                    if touch and close_ok:
+        tol  = self.tolerance_pct
+        brk  = tol + self.breakout_tol_pct
+      
+        if self.direction == "bullish":
+            for ts_lvl, lvl in levels["resistance"]:
+                touched_idx = None
+                for i, bar in enumerate(recent.itertuples(index=False)):
+                    prev = recent.iloc[i-1]
+                    curr = recent.iloc[i]
+                    if not self.breakout:
+                        touch  = prev.high >= lvl - tol
+                        reject = curr.close  <  lvl - tol
+                    else:
+                        touch  = prev.high  >= lvl * (1 + brk)
+                        reject = curr.close < lvl 
+
+                    if touch and touched_idx is None:
+                        touched_idx = i                # abbiamo il primo touch
+                        continue 
+
+                    if reject and touched_idx is not None and i > touched_idx:
                         return True
 
-        else:                                      
-            for idx_lvl, lvl_price in key_levels["support"]:
-                for bar in recent.itertuples():
-                    touch = bar.low <= lvl_price + self.C   
-                    close_ok = bar.close >= lvl_price    
-                    if touch and close_ok:
+        else:  # SUPPORTO -----------------------------------------------------------
+            for ts_lvl, lvl in levels["support"]:
+                touched_idx = None  
+                for i, bar in enumerate(recent.itertuples(index=False)):
+                    if not self.breakout:
+                        touch  = bar.close <= lvl + tol
+                        reject = bar.low   >  lvl + tol
+                    else:
+                        touch  = bar.low  <= lvl * (1 - brk)
+                        reject = bar.close > lvl 
+
+                    if touch and touched_idx is None:
+                        touched_idx = i        
+                        continue             
+
+                    if reject and touched_idx is not None and i > touched_idx:
                         return True
         return False
+
 
 
 class BosIndicator(KeyLevelFinder):
@@ -326,25 +358,36 @@ class PriceEmaDifferenceRule(Rule):
     """
     def __init__(
         self,
-        indicator: PriceEmaDifferenceIndicator,
         direction: Literal["positive", "negative", "both"],
         threshold: float,
+        lookback: int
     
     ):
         if direction not in ("positive", "negative", "both"):
             raise ValueError("direction deve essere 'positive', 'negative' o 'both'")
-        self.indicator = indicator
         self.direction = direction
         self.threshold = threshold
         self.last_diff: Optional[float] = None
-        self.lookback = self.indicator.ma_period
+        self.lookback = lookback
 
     def check(self, window: pd.DataFrame) -> bool:
         """
         Restituisce True se la differenza EMA meets la condizione impostata.
         """
-        diff = self.indicator.Update(window)
-        self.last_diff = diff
+        if not isinstance(window, pd.DataFrame):
+            return None
+            
+        # Cerca la colonna 'close'
+        closes = window["close"]
+
+        if len(closes) == 0:
+            return None
+
+        # Calcola EMA sull'ultima finestra
+        ema_series = closes.ewm(span=self.lookback, adjust=False).mean()
+        last_ema = ema_series.iloc[-1]
+        last_close = closes.iloc[-1]
+        diff = (last_close - last_ema) / last_ema
 
         if diff is None:
             return False

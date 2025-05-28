@@ -5,7 +5,14 @@ from AlgorithmImports import *
 from typing import Optional
 import pandas as pd
 from tqdm import tqdm
+from dataclasses import dataclass, field
+from utils.rules import *
 
+@dataclass
+class BaseStrategy:
+    id: str
+    rules: List[Rule] = field(default_factory=list)
+    bias: Literal["bullish", "bearish", "both"] = "both"
 class Labeller:
     """
     Etichetta 1 quando:
@@ -82,7 +89,7 @@ class Labeller:
             idx_sl = sl_hit.idxmax() if sl_hit.any() else None
 
             if idx_tp is not None and (idx_sl is None or idx_tp < idx_sl):
-                print("siummmmmm")
+              
                 return 1
             return 0
 
@@ -115,19 +122,20 @@ class Labeller:
         labels = [None] * n
 
         # determina il massimo lookback di tutte le rule
-        max_lookback = max(rule.lookback for rule in self.strategy.rules) 
+        max_lookback = max(rule.lookback for rule in self.strategy.rules) #modificare: massimo anche rispetto al lookback degli indicatori
 
         # se usi anche lookahead per filtrare future_window, potresti aggiungere anche quello
         warmup = max_lookback + 2
-
+   
         for i in tqdm(range(n), desc="Labeling"):
             # finché siamo nel warmup, lasciamo label = None
+       
             if i < warmup:
                 labels[i] = None
                 continue
 
             # sliding window fino a max_lookback barre
-            start = i - self.lookback + 1
+            start = i - self.lookback
             window = df.iloc[start : i + 1]
 
             # future window

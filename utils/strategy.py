@@ -42,7 +42,6 @@ class MLStrategy:
         
     def preprocess(self, history_window: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
         # 1) Etichetta l’intera finestra
-        print(history_window)
         price_data_all = history_window.copy().reset_index()
         price_data_all.rename(
             columns={
