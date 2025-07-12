@@ -2,18 +2,10 @@
 from AlgorithmImports import *
 # endregion
 
-# Your New Python File
 import pandas as pd
-from typing import Any, Dict, Optional
 from datetime import timedelta
-
-# utils/logger_utils.py
-import logging
-
+from typing import Any, Dict, List
 from tqdm import tqdm
-from typing import Any, Dict, Optional
-from datetime import timedelta
-
 from utils.indicators import *
 
     
@@ -33,7 +25,7 @@ class IndicatorWrapper:
       e si memorizza il valore di ritorno
     """
 
-    def __init__(self, indicator: Any, name: str, symbol: Symbol):
+    def __init__(self, indicator: object, name: str, symbol: Symbol) -> None:
         self.indicator = indicator
         self.name: str = name.lower()          # es. "atr", "bb", …
         self.symbol: Symbol = symbol
@@ -120,7 +112,7 @@ class IndicatorWrapper:
 
 
 class IndicatorManager:
-    def __init__(self, wrappers: Dict[str, IndicatorWrapper]):
+    def __init__(self, wrappers: Dict[str, IndicatorWrapper]) -> None:
         self.wrappers = wrappers
 
     def update_all(self, df: pd.DataFrame) -> pd.DataFrame:

@@ -27,7 +27,7 @@ class KeyLevelFinder(Rule):
         tolerance_pct: float = 0.001,
         n_levels: Optional[int] = None,
         levels_lag: int = 10,
-    ):
+    ) -> None:
         self.lookback       = lookback
         self.locality       = locality
         self.min_touches    = min_touches
@@ -60,10 +60,8 @@ class KeyLevelFinder(Rule):
     # ---------------------------------------------------------------------
     def detect_key_levels(self, df: pd.DataFrame) -> Dict[str, List[Tuple[pd.Timestamp, float]]]:
      
-        print(self.lookback + self.levels_lag)
         if len(df) < self.lookback + self.levels_lag:
             return {"resistance": [], "support": []}
-        print("hfdiodfsadshijadfsadfsadfsidfhisu")
         # finestra “storica” su cui cercare i pivot
         window = df.iloc[-self.lookback - self.levels_lag :-self.levels_lag].copy()
         touches = self._pivot_candidates(window)
@@ -75,7 +73,6 @@ class KeyLevelFinder(Rule):
         for price, idxs in touches.items():
             if len(idxs) < self.min_touches:
                 continue
-            print("9")
             first_idx = idxs[0]
             tol = price * self.tolerance_pct
 
@@ -98,7 +95,7 @@ class KeyLevelFinder(Rule):
 
         return validated
     
-    def merge(self,pivots):
+    def merge(self, pivots: List[Tuple[int, float]]) -> List[Tuple[int, float]]:
         pivots = sorted(pivots, key=lambda x: x[1])
         merged: List[Tuple[int,float]] = []
         for l,p in pivots:
@@ -110,12 +107,12 @@ class KeyLevelBounceIndicator(KeyLevelFinder):
 
     def __init__(
         self,
-        *args,
+        *args: Any,
         bounce_lookback: int = 5,
         breakout: bool = False,
         breakout_tol_pct: float = 0.0004,   # extra % oltre tolerance per lo spike
-        **kwargs
-    ):
+        **kwargs: Any
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.bounce_lookback  = bounce_lookback
         self.breakout         = breakout
@@ -177,7 +174,7 @@ class KeyLevelBounceIndicator(KeyLevelFinder):
 
 
 class BosIndicator(KeyLevelFinder):
-    def __init__(self, *args, breakout_lookback: int = 10, **kwargs):
+    def __init__(self, *args: Any, breakout_lookback: int = 10, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.break_lookback = breakout_lookback
     def check(self, data: pd.DataFrame) -> Tuple[bool, Optional[Tuple[Any, float]]]:
@@ -194,7 +191,6 @@ class BosIndicator(KeyLevelFinder):
         if self.direction in ("bullish", "both"):
             for lvl_idx, lvl_price in key_levels["resistance"]:
                 if body_low > lvl_price:
-                    print(f"body_low: {body_low}, price: {lvl_price}")
                     return True
 
         if self.direction in ("bearish", "both"):
@@ -216,7 +212,7 @@ class TrendlineFinder(Rule):
         lookback: int = 300,
         C: float = 0.0005,
         min_touches: int = 2
-    ):
+    ) -> None:
         if kind not in ("support","resistance","both"):
             raise ValueError("kind must be 'support','resistance' or 'both'")
         self.kind        = kind
@@ -362,7 +358,7 @@ class PriceEmaDifferenceRule(Rule):
         threshold: float,
         lookback: int
     
-    ):
+    ) -> None:
         if direction not in ("positive", "negative", "both"):
             raise ValueError("direction deve essere 'positive', 'negative' o 'both'")
         self.direction = direction
@@ -400,6 +396,25 @@ class PriceEmaDifferenceRule(Rule):
             return abs(diff) >= self.threshold
 
 
+class PriceBelowMARule(Rule):
+    """Regola che verifica se il prezzo di chiusura e' al di sotto di una
+    media mobile semplice di ``ma_period`` barre di almeno ``threshold_pct``.
+    """
+
+    def __init__(self, ma_period: int, threshold_pct: float = 0.0) -> None:
+        self.ma_period = ma_period
+        self.threshold_pct = threshold_pct
+        self.lookback = ma_period
+
+    def check(self, window: pd.DataFrame) -> bool:
+        if len(window) < self.ma_period:
+            return False
+
+        ma = window["close"].rolling(self.ma_period).mean().iloc[-1]
+        current = window["close"].iloc[-1]
+        return current < ma * (1 - self.threshold_pct)
+
+
 class FVGRule(Rule):
     def __init__(
         self,
@@ -408,7 +423,7 @@ class FVGRule(Rule):
         direction: Literal["bullish", "bearish", "both"] = "bullish",
         body_multiplier: float = 1.5,
         retest_lookback: int = 4
-    ):
+    ) -> None:
         self.lookback = lookback
         self.must_retest = must_retest
         self.direction = direction
@@ -525,7 +540,7 @@ class FVGRule(Rule):
 
 
 class InverseFVGRule(FVGRule):
-    def __init__(self, *args, inverse: bool = True, **kwargs):
+    def __init__(self, *args: Any, inverse: bool = True, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.inverse = inverse
 
@@ -601,7 +616,7 @@ class FvgBosRule:
         fvg_rule: FVGRule,
         bos_rule: BosIndicator,
         tol_factor: float = 2.0
-    ):
+    ) -> None:
         self.fvg = fvg_rule
         self.bos = bos_rule
         self.tol_factor = tol_factor

@@ -3,7 +3,7 @@ from statsmodels.tsa.stattools import adfuller
 #endregion
 
 class StationarySelectionModel(ETFConstituentsUniverseSelectionModel):
-    def __init__(self, algorithm, etf, lookback = 10, universe_settings = None):
+    def __init__(self, algorithm: QCAlgorithm, etf: str, lookback: int = 10, universe_settings: UniverseSettings | None = None) -> None:
         self.algorithm = algorithm
         self.lookback = lookback
         self.symbol_data = {}
@@ -12,7 +12,7 @@ class StationarySelectionModel(ETFConstituentsUniverseSelectionModel):
         symbol = Symbol.create(etf, SecurityType.EQUITY, Market.USA)
         super().__init__(symbol, universe_settings, self.etf_constituents_filter)
 
-    def etf_constituents_filter(self, constituents):
+    def etf_constituents_filter(self, constituents: List[ETFConstituent]) -> List[Symbol]:
         stationarity = {}
 
         for c in constituents:
@@ -38,16 +38,16 @@ class StationarySelectionModel(ETFConstituentsUniverseSelectionModel):
         return [x[0] for x in selected[:10]]
 
 class PriceGetter(CoarseFundamentalUniverseSelectionModel):
-    def __init__(self, universe):
+    def __init__(self, universe: StationarySelectionModel) -> None:
         self.universe = universe
         super().__init__(self.selection)
 
-    def selection(self, coarse):
+    def selection(self, coarse: List[CoarseFundamental]) -> List[Symbol]:
         self.universe.prices = {c.symbol: c.price for c in coarse}
         return []
 
 class SymbolData:
-    def __init__(self, algorithm, symbol, lookback):
+    def __init__(self, algorithm: QCAlgorithm, symbol: Symbol, lookback: int) -> None:
         # RollingWindow to hold log price series for stationary testing
         self.window = RollingWindow[float](lookback)
         self.model = None
@@ -57,7 +57,7 @@ class SymbolData:
         for bar in list(history)[:-1]:
             self.window.add(np.log(bar.close))
 
-    def update(self, value):
+    def update(self, value: float) -> None:
         if value == 0: return
 
         # Update RollingWindow with log price
@@ -68,5 +68,5 @@ class SymbolData:
             self.model = adfuller(price, regression='ct', autolag='BIC')
 
     @property
-    def test_statistics(self):
+    def test_statistics(self) -> float | None:
         return self.model[0] if self.model is not None else None
