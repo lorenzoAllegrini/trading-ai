@@ -79,6 +79,13 @@ class BasicTemplateAlgorithm(QCAlgorithm):
             callbacks=callbacks,
         )
 
+        # ------------------------- Risk Management ----------------------
+        self.stop_loss_multiple = 2.0
+        self.take_profit_multiple = 4.0
+        self.stop_loss_ticket = None
+        self.take_profit_ticket = None
+        self.atr = self.ATR(self.symbol, 14, MovingAverageType.Wilders, Resolution.Daily)
+
     # ------------------------------------------------------------------
     def OnData(self, data: Slice) -> None:
         if self.symbol not in data:
@@ -104,10 +111,39 @@ class BasicTemplateAlgorithm(QCAlgorithm):
         if len(self.history_window) < self.window_size:
             return
 
-        signal = int(self.long_strategy.predict(self.history_window)[0])
+        if not self.atr.IsReady:
+            return
 
-        if signal == 1:
-            self.SetHoldings(self.symbol, 1.0)
-        else:
+        signal = int(self.long_strategy.predict(self.history_window)[0])
+        invested = self.Portfolio[self.symbol].Invested
+
+        if signal == 1 and not invested:
+            quantity = self.CalculateOrderQuantity(self.symbol, 1.0)
+            self.MarketOrder(self.symbol, quantity)
+
+            atr_value = self.atr.Current.Value
+            stop_price = data[self.symbol].Close - atr_value * self.stop_loss_multiple
+            take_price = data[self.symbol].Close + atr_value * self.take_profit_multiple
+
+            self.stop_loss_ticket = self.StopMarketOrder(self.symbol, -quantity, stop_price)
+            self.take_profit_ticket = self.LimitOrder(self.symbol, -quantity, take_price)
+
+        elif signal != 1 and invested:
             self.Liquidate(self.symbol)
+            if self.stop_loss_ticket:
+                self.Transactions.CancelOrder(self.stop_loss_ticket.OrderId)
+                self.stop_loss_ticket = None
+            if self.take_profit_ticket:
+                self.Transactions.CancelOrder(self.take_profit_ticket.OrderId)
+                self.take_profit_ticket = None
+
+    def OnOrderEvent(self, orderEvent: OrderEvent) -> None:
+        if self.stop_loss_ticket and orderEvent.OrderId == self.stop_loss_ticket.OrderId:
+            if orderEvent.Status != OrderStatus.Submitted:
+                self.stop_loss_ticket = None
+                self.take_profit_ticket = None
+        if self.take_profit_ticket and orderEvent.OrderId == self.take_profit_ticket.OrderId:
+            if orderEvent.Status != OrderStatus.Submitted:
+                self.take_profit_ticket = None
+                self.stop_loss_ticket = None
 
