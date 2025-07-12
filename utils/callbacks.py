@@ -13,10 +13,10 @@ import psutil
 
 
 class Callback:
-    def call(self):
+    def call(self) -> None:
         raise NotImplementedError
 
-    def __call__(self):
+    def __call__(self) -> None:
         self.call()
 
     def collect(self, reset: bool = False) -> Dict[str, Any]:
@@ -24,7 +24,7 @@ class Callback:
 
 
 class CallbackHandler:
-    def __init__(self, callbacks: List[Callback], call_every_ms: int = 100):
+    def __init__(self, callbacks: List[Callback], call_every_ms: int = 100) -> None:
         self.callbacks: List[Callback] = callbacks
         self.running: bool = False
         self.call_every_ms: int = call_every_ms
@@ -32,19 +32,19 @@ class CallbackHandler:
         self.start_time: Optional[int] = None
         self.time: Optional[float] = None
 
-    def start(self):
+    def start(self) -> None:
         self.thread = Thread(target=self.callback_loop)
         self.running = True
         self.thread.start()
 
-    def callback_loop(self):
+    def callback_loop(self) -> None:
         self.start_time = time.time()
         while self.running:
             for callback in self.callbacks:
                 callback()
             sleep(self.call_every_ms / 1000)
 
-    def stop(self, blocking: bool = True):
+    def stop(self, blocking: bool = True) -> None:
         self.running = False
         end_time = time.time()
         self.time = end_time - self.start_time if self.start_time is not None else None
@@ -59,13 +59,13 @@ class CallbackHandler:
 
 
 class SystemMonitorCallback(Callback):
-    def __init__(self):
+    def __init__(self) -> None:
         self.p: psutil.Process = psutil.Process(os.getpid())
         self.n: int = 0
         self.cpu: float = 0
         self.mem: float = 0
 
-    def call(self):
+    def call(self) -> None:
         curr_cpu = self.p.cpu_percent() / psutil.cpu_count()
         curr_mem = self.p.memory_info().rss
         self.cpu = self.cpu + (curr_cpu - self.cpu) / (self.n + 1)

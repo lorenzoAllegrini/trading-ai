@@ -28,10 +28,10 @@ class Labeller:
         sl:bool = False,
         sl_locality:int=5,
         remove:bool = False,
-        slcoef: float = 0.2,   
-        tpsl_ratio: float = 2.0,   
+        slcoef: float = 0.2,
+        tpsl_ratio: float = 2.0,
         atr_col: str = "atr",
-        ):
+        ) -> None:
         self.strategy = strategy
         self.lookahead = lookahead       
         self.move_threshold = move_threshold
@@ -80,7 +80,6 @@ class Labeller:
 
         # Long --------------------------------------------------
         if is_long:
-            print(f"entry: {entry}, tp: {entry + tp_points}, sl: {entry - sl_points}")
             tp_hit = (future_close >= entry + tp_points)
             sl_hit = (future_close <= entry - sl_points)
 

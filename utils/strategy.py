@@ -3,12 +3,13 @@ from AlgorithmImports import *
 # endregion
 
 import pandas as pd
+import numpy as np
+from sklearn.base import BaseEstimator
 from typing import Optional, Callable, Tuple, Any, List
 from .indicator_wrapper import IndicatorManager, IndicatorWrapper
 from .labeller import Labeller
 from .callbacks import Callback, CallbackHandler
 from skopt import BayesSearchCV
-from tqdm import tqdm
 
 class MLStrategy:
     def __init__(
@@ -18,8 +19,8 @@ class MLStrategy:
         id: str,
         window_size: int = 10000,
         atr_period: int = 100,              # ← periodo ATR di default
-        symbol: Symbol | None = None    
-    ):
+        symbol: Symbol | None = None
+    ) -> None:
         if "atr" not in indicator_factories:
             if symbol is None:
                 raise ValueError("Serve `symbol=` se vuoi aggiungere l'ATR auto.")
@@ -70,13 +71,13 @@ class MLStrategy:
         return combined_out, labels
 
 
-    def model_selection( 
+    def model_selection(
         self,
         train_df: pd.DataFrame,
-        model: Any,
+        model: BaseEstimator,
         callbacks: Optional[List[Callback]] = None,
         call_every_ms: int = 100,
-    ):
+    ) -> dict[str, Any]:
         callback_handler = CallbackHandler(
             callbacks=callbacks or [],
             call_every_ms=call_every_ms,
@@ -102,7 +103,7 @@ class MLStrategy:
     def predict(
         self,
         data:pd.DataFrame
-    ):
+    ) -> np.ndarray:
         indicator_df, _ = self.preprocess(data)
         data_point = indicator_df.tail(1)
 

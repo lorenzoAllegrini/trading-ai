@@ -2,29 +2,17 @@
 from AlgorithmImports import *
 # endregion
 
-# Your New Python File
 import pandas as pd
-from typing import Any, Dict, Optional
-from datetime import timedelta
-
-# utils/logger_utils.py
-import logging
-
-from tqdm import tqdm
-from typing import Any, Dict, Optional
-from datetime import timedelta
-
-# utils/logger_utils.py
-import logging
-from .rules import *
+from typing import Optional
 from abc import ABC
+from utils.rules import *
     
 
 class CustomIndicator(ABC):
     """
     Base class per tutti gli indicatori: impone .update(df) → risultato
     """
-    def Update(self, df: pd.DataFrame) -> Any:
+    def Update(self, df: pd.DataFrame) -> float | None:
         pass
 
 
@@ -36,7 +24,7 @@ class PriceEmaDifferenceIndicator(CustomIndicator):
     Valore positivo → prezzo sopra la EMA.
     Valore negativo → prezzo sotto la EMA.
     """
-    def __init__(self, ma_period: int):
+    def __init__(self, ma_period: int) -> None:
         self.ma_period = ma_period
         self.last_diff = None
         self.last_ema = None
@@ -74,7 +62,7 @@ class TrendlineBreakoutIndicator(CustomIndicator):
         lookback: Optional[int] = None,
         tol: float = 1e-5,
         bos_lookback: int = 5
-    ):
+    ) -> None:
         """
         finder:    TrendlineFinder già configurato (support o resistance)
         lookback:  quante barre guardare (default = finder.lookback)
@@ -147,7 +135,7 @@ class TrendlineSlopeIndicator(CustomIndicator):
         self,
         finder: TrendlineFinder,
         lookback: Optional[int] = None
-    ):
+    ) -> None:
         super().__init__()
         self.finder   = finder
         self.lookback = lookback or finder.lookback
@@ -204,7 +192,7 @@ class WickReversalIndicator(CustomIndicator):
         kind: Literal["high", "low"] = "high",
         lookback: int = 50,
         locality: int = 3           # ampiezza del “vicinato” per il pivot
-    ):
+    ) -> None:
         if kind not in ("high", "low"):
             raise ValueError("kind deve essere 'high' o 'low'")
         self.kind     = kind
@@ -276,7 +264,7 @@ class FVGSizeIndicator(CustomIndicator):
         fvg_rule: FVGRule,
         normalize_by_atr: bool = False,
         atr_period: int | None = None
-    ):
+    ) -> None:
         self.rule              = fvg_rule              # oggetto già configurato
         self.norm              = normalize_by_atr
         self.atr_period        = atr_period or fvg_rule.lookback
