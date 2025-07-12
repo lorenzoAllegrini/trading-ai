@@ -400,6 +400,25 @@ class PriceEmaDifferenceRule(Rule):
             return abs(diff) >= self.threshold
 
 
+class PriceBelowMARule(Rule):
+    """Regola che verifica se il prezzo di chiusura e' al di sotto di una
+    media mobile semplice di ``ma_period`` barre di almeno ``threshold_pct``.
+    """
+
+    def __init__(self, ma_period: int, threshold_pct: float = 0.0):
+        self.ma_period = ma_period
+        self.threshold_pct = threshold_pct
+        self.lookback = ma_period
+
+    def check(self, window: pd.DataFrame) -> bool:
+        if len(window) < self.ma_period:
+            return False
+
+        ma = window["close"].rolling(self.ma_period).mean().iloc[-1]
+        current = window["close"].iloc[-1]
+        return current < ma * (1 - self.threshold_pct)
+
+
 class FVGRule(Rule):
     def __init__(
         self,
