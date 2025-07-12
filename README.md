@@ -5,6 +5,7 @@ Questo repository contiene un framework sperimentale per generare segnali di tra
 ## Struttura
 
 - **`main.py`** – implementa `BasicTemplateAlgorithm`, una strategia `QCAlgorithm` che carica dati storici, calcola vari indicatori, esegue un'ottimizzazione bayesiana degli iperparametri e produce segnali long/short tramite un modello XGBoost.
+  La logica di `OnData` applica ora stop loss e take profit dinamici basati sull'ATR per ogni operazione.
 - **`research.py`** – script di esempio che mostra come utilizzare i moduli per addestrare e testare la strategia in locale partendo da file di dati compressi.
 - **`research.ipynb`** – notebook usato nelle fasi di sperimentazione e analisi.
 - **`universe.py`** – definisce modelli di Universe Selection che filtrano i titoli sulla base di criteri di stazionarietà dei prezzi.
