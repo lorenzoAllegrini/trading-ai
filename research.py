@@ -4,7 +4,7 @@ import zipfile
 import os
 import pandas as pd
 import numpy as np
-import sys, pathlib
+
 
 
 # se il tuo notebook NON è nella root, sblocca il path:
@@ -17,16 +17,10 @@ from utils.base_strategy     import BaseStrategy, FVGRule, PriceBelowMARule
 from utils.labeller          import Labeller
 from utils. strategy import MLStrategy
 
-from utils.trading_benchmark import MLTradingBenchmark
-from utils.callbacks import CallbackHandler, SystemMonitorCallback
-from sklearn.metrics import make_scorer
+from utils.callbacks import SystemMonitorCallback
 from skopt import BayesSearchCV
-from functools import partial
-from sklearn.model_selection import TimeSeriesSplit
-from skopt.space import Real, Categorical, Integer
-from sklearn.pipeline import Pipeline
+from skopt.space import Real, Integer
 from xgboost import XGBClassifier
-from datetime import timedelta
 
 data_path = "data/equity/usa/minute/spx"  # <-- il tuo path corretto!
 
@@ -45,7 +39,6 @@ for file in files:
 history = pd.concat(dfs)
 history = history.sort_values(by="time").reset_index(drop=True)
 
-print(history.head())
 
 
 window_size = 1000
